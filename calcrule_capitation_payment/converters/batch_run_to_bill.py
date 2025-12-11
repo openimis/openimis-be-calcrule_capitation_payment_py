@@ -12,7 +12,7 @@ class BatchRunToBillConverter(object):
         cls.build_thirdparty(health_facility, bill)
         cls.build_code(health_facility, payment_plan, batch_run, bill)
         cls.build_date_dates(batch_run, bill)
-        #cls.build_tax_analysis(bill)
+        # cls.build_tax_analysis(bill)
         cls.build_currency(bill)
         cls.build_status(bill)
         cls.build_terms(payment_plan, bill)
@@ -36,12 +36,12 @@ class BatchRunToBillConverter(object):
 
     @classmethod
     def build_date_dates(cls, batch_run, bill):
-        from core import datetime, datetimedelta
+        from core import datetimedelta
         bill["date_due"] = batch_run.run_date + datetimedelta(days=30)
         bill["date_bill"] = batch_run.run_date
         bill["date_valid_from"] = batch_run.run_date
         # TODO - explain/clarify meaning of 'validity to' of this field
-        #bill["date_valid_to"] = batch_run.expiry_date
+        # bill["date_valid_to"] = batch_run.expiry_date
 
     @classmethod
     def build_tax_analysis(cls, bill):

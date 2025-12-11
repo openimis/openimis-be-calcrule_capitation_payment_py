@@ -18,16 +18,13 @@ from calcrule_capitation_payment.config import (
 )
 from claim.models import (
     ClaimItem,
-    Claim,
     ClaimService
 )
 from claim.subqueries import elm_adjusted_exp
 from claim_batch.models import (
-    RelativeIndex,
     CapitationPayment
 )
 from claim_batch.services import (
-    get_period,
     get_hospital_claim_filter,
     get_contribution_index_rate
 )
@@ -57,7 +54,7 @@ def check_bill_not_exist(instance, health_facility, payment_plan, **kwargs):
             thirdparty_id=health_facility.id,
             code=code
         )
-        if bills.exists() == False:
+        if bills.exists() is False:
             return True
 
 
@@ -98,7 +95,7 @@ def generate_capitation(payment_plan, start_date, end_date, allocated_contributi
     month = end_date.month
     if pp_params['weight_insured_population'] > 0 or pp_params['weight_number_insured_families'] > 0 \
             or population_matter:
-        # get location (district) linked to the product --> to be 
+        # get location (district) linked to the product --> to be
         sum_pop, sum_families = 1, 1
         if population_matter:
             sum_pop, sum_families = get_product_sum_population(product)
@@ -140,15 +137,13 @@ def get_product_hf_filter(pp_params, queryset):
         # take the HF that match level and sublevel OR level if sublevel is not set in product
         queryset = queryset\
             .filter(
-                (Q(level=pp_params['hf_level_1']) &\
-                    (Q(sub_level=pp_params['hf_sublevel_1']) | Q(sub_level__isnull=True))) |\
-                (Q(level=pp_params['hf_level_2']) &\
-                    (Q(sub_level=pp_params['hf_sublevel_2']) | Q(sub_level__isnull=True))) |\
-
-                (Q(level=pp_params['hf_level_3']) &\
-                    (Q(sub_level=pp_params['hf_sublevel_3']) | Q(sub_level__isnull=True))) |\
-
-                (Q(level=pp_params['hf_level_4']) &\
+                (Q(level=pp_params['hf_level_1']) &
+                    (Q(sub_level=pp_params['hf_sublevel_1']) | Q(sub_level__isnull=True))) |
+                (Q(level=pp_params['hf_level_2']) &
+                    (Q(sub_level=pp_params['hf_sublevel_2']) | Q(sub_level__isnull=True))) |
+                (Q(level=pp_params['hf_level_3']) &
+                    (Q(sub_level=pp_params['hf_sublevel_3']) | Q(sub_level__isnull=True))) |
+                (Q(level=pp_params['hf_level_4']) &
                     (Q(sub_level=pp_params['hf_sublevel_4']) | Q(sub_level__isnull=True)))
             )
     return queryset
@@ -170,7 +165,7 @@ def generate_capitation_health_facility(
     if pp_params['weight_insured_population'] > 0:
         sum_hf_insurees = get_product_sum_insurees(product, start_date, end_date, health_facility)
 
-    # get the sum of policy/insureed families
+    # get the sum of policy / insureed families
     sum_hf_insured_families = 0
     if pp_params['weight_number_insured_families'] > 0:
         sum_hf_insured_families = get_product_sum_policies(product, start_date, end_date, health_facility)
@@ -267,7 +262,7 @@ def get_product_villages(product):
     villages = None
     if districts is not None:
         villages = Location.objects.filter(validity_to__isnull=True)\
-                .filter(parent__parent__in=districts)
+            .filter(parent__parent__in=districts)
     return villages
 
 
@@ -278,7 +273,7 @@ def get_capitation_health_facilites(product, pp_params, start_date, end_date):
         .filter(location__in=districts)\
         .filter(get_hospital_level_filter(pp_params, prefix='claim__'))\
         .filter(get_hospital_claim_filter(product.ceiling_interpretation, pp_params['claim_type'], 'claim__'))
-    # might need to add the items/services status
+    # might need to add the items / services status
     health_facilities_off_districts = HealthFacility.objects\
         .filter(validity_to__isnull=True)\
         .filter(claim__validity_to__isnull=True)\
@@ -304,8 +299,8 @@ def get_hf_sum_population(health_facility):
             sum_pop=Sum((
                 Coalesce(F('male_population'), 0)
                 + Coalesce(F('female_population'), 0)
-                + Coalesce(F('other_population'), 0))*F('catchments__catchment')/100))\
-        .annotate(sum_families=Sum(Coalesce(F('families'), 0)*F('catchments__catchment')/100))
+                + Coalesce(F('other_population'), 0)) * F('catchments__catchment') / 100))\
+        .annotate(sum_families=Sum(Coalesce(F('families'), 0) * F('catchments__catchment') / 100))
 
     sum_pop, sum_families = 0, 0
     for p in pop:
@@ -326,11 +321,11 @@ def get_product_sum_insurees(product, start_date, end_date, health_facility=None
             .filter(policy__product=product)
         # filter based on catchement if HF is defined
         if health_facility is None:
-            insurees = insurees.annotate(sum=Count('id')/100)
+            insurees = insurees.annotate(sum=Count('id') / 100)
         else:
             insurees = insurees.filter(policy__family__location__catchments__health_facility=health_facility)\
                 .filter(policy__family__location__catchments__validity_to__isnull=True)\
-                .annotate(sum=Sum(F('policy__family__location__catchments__catchment'))*Count('id')/100)
+                .annotate(sum=Sum(F('policy__family__location__catchments__catchment')) * Count('id') / 100)
         sum_insuree = 0
         for insuree in insurees:
             sum_insuree += insuree.sum
@@ -350,11 +345,11 @@ def get_product_sum_policies(product, start_date, end_date, health_facility=None
             .filter(product=product)
         # filter based on catchement if HF is defined
         if health_facility is None:
-            policies = policies.annotate(sum=Count('id')/100)
+            policies = policies.annotate(sum=Count('id') / 100)
         else:
             policies = policies.filter(family__location__catchments__health_facility=health_facility)\
                 .filter(family__location__catchments__validity_to__isnull=True)\
-                .annotate(sum=Sum(F('family__location__catchments__catchment'))*Count('id')/100)
+                .annotate(sum=Sum(F('family__location__catchments__catchment')) * Count('id') / 100)
         sum_policy = 0
         for policy in policies:
             sum_policy += policy.sum
@@ -366,8 +361,8 @@ def get_product_sum_policies(product, start_date, end_date, health_facility=None
 def get_product_sum_population(product):
     villages = get_product_villages(product)
     if villages is not None:
-        pop = villages.annotate(sum_pop=Sum((F('male_population')+F('female_population')+F('other_population'))))\
-                .annotate(sum_families=Sum((F('families'))))
+        pop = villages.annotate(sum_pop=Sum((F('male_population') + F('female_population') + F('other_population'))))\
+            .annotate(sum_families=Sum((F('families'))))
 
         sum_pop, sum_families = 0, 0
         for p in pop:
@@ -446,4 +441,3 @@ def get_hospital_level_filter(pp_params, prefix=''):
         else:
             qterm |= Q(('%s__level' % hf, pp_params['hf_level_4']))
     return qterm
-

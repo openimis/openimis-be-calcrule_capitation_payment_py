@@ -14,7 +14,7 @@ class CapitationPaymentToBillItemConverter(object):
         cls.build_quantity(bill_line_item)
         cls.build_unit_price(bill_line_item, capitation_payment)
         cls.build_discount(bill_line_item, capitation_payment)
-        #cls.build_tax(bill_line_item)
+        # cls.build_tax(bill_line_item)
         cls.build_amounts(bill_line_item)
         return bill_line_item
 
@@ -25,7 +25,7 @@ class CapitationPaymentToBillItemConverter(object):
 
     @classmethod
     def build_dates(cls, bill_line_item, batch_run):
-        from core import datetime, datetimedelta
+        from core import datetimedelta
         bill_line_item["date_valid_from"] = batch_run.run_date
         bill_line_item["date_valid_to"] = batch_run.run_date + datetimedelta(days=30)
 
