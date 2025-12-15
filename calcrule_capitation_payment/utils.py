@@ -295,7 +295,7 @@ def get_hf_sum_population(health_facility):
     pop = Location.objects.filter(
         catchments__health_facility=health_facility,
         catchments__validity_to__isnull=True,
-        *filter_validity()).annotate(
+        *Location.filter_validity()).annotate(
             sum_pop=Sum((
                 Coalesce(F('male_population'), 0)
                 + Coalesce(F('female_population'), 0)

@@ -1,7 +1,7 @@
 from django.core.exceptions import ValidationError
 from gettext import gettext as _
 
-from calcrule_capitation_payment.apps import AbsStrategy
+from core.abs_calculation_rule import AbsStrategy
 from calcrule_capitation_payment.config import (
     CLASS_RULE_PARAM_VALIDATION,
     DESCRIPTION_CONTRIBUTION_VALUATION,
