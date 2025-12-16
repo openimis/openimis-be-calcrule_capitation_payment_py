@@ -14,7 +14,7 @@ from claim.test_helpers import (
 from claim_batch.services import do_process_batch
 from contribution.test_helpers import create_test_payer, create_test_premium
 from contribution_plan.tests.helpers import create_test_payment_plan
-from core.services import create_or_update_interactive_user, create_or_update_core_user
+from core.test_helpers import create_test_interactive_user
 from insuree.test_helpers import create_test_insuree
 from medical.test_helpers import create_test_service, create_test_item
 from medical_pricelist.test_helpers import (
@@ -51,13 +51,10 @@ _TEST_DATA_USER = {
 
 
 class BatchRunWithCapitationPaymentTest(TestCase):
+
     def setUp(self) -> None:
         super(BatchRunWithCapitationPaymentTest, self).setUp()
-        i_user, i_user_created = create_or_update_interactive_user(
-            user_id=None, data=_TEST_DATA_USER, audit_user_id=999, connected=False)
-        user, user_created = create_or_update_core_user(
-            user_uuid=None, username=_TEST_DATA_USER["username"], i_user=i_user)
-        self.user = user
+        self.user = create_test_interactive_user(username=_TEST_DATA_USER["username"])
 
     def test_simple_batch(self):
         """

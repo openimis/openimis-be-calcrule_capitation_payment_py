@@ -36,7 +36,6 @@ from location.models import (
     HealthFacility
 )
 from policy.models import Policy
-from core import filter_validity
 
 logger = logging.getLogger(__name__)
 
