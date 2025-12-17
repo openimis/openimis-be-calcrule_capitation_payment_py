@@ -14,7 +14,7 @@ from claim.test_helpers import (
 from claim_batch.services import do_process_batch
 from contribution.test_helpers import create_test_payer, create_test_premium
 from contribution_plan.tests.helpers import create_test_payment_plan
-from core.test_helpers import create_test_interactive_user
+from core.test_helpers import create_test_interactive_user, create_admin_role
 from insuree.test_helpers import create_test_insuree
 from medical.test_helpers import create_test_service, create_test_item
 from medical_pricelist.test_helpers import (
@@ -46,7 +46,7 @@ _TEST_DATA_USER = {
     "other_names": _TEST_USER_NAME,
     "user_types": "INTERACTIVE",
     "language": "en",
-    "roles": [1],
+    "roles": [create_admin_role().id],
 }
 
 
