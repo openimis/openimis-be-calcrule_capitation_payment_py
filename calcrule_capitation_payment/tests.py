@@ -161,8 +161,8 @@ class BatchRunWithCapitationPaymentTest(TestCase):
                           "items_pricelist_id": test_item_price_list.id}
         )
         create_test_health_catchment(test_health_facility, test_village)
-        add_service_to_hf_pricelist(service, test_health_facility.id)
-        add_item_to_hf_pricelist(item, test_health_facility.id)
+        add_service_to_hf_pricelist(service, test_health_facility)
+        add_item_to_hf_pricelist(item, test_health_facility)
 
         claim1 = create_test_claim(
             {"claimed": 500.0, "insuree_id": insuree.id, 'health_facility_id': test_health_facility.id})
