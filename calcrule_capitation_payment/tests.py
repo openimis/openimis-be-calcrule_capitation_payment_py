@@ -175,11 +175,11 @@ class BatchRunWithCapitationPaymentTest(TestCase):
         errors = processing_claim(claim1, self.user, True)
         _, days_in_month = calendar.monthrange(claim1.validity_from.year, claim1.validity_from.month)
         # add process stamp for claim to not use the process_stamp with now()
-        self.assertEquals(len(errors), 0, "Claim processing failed")
+        self.assertEqual(len(errors), 0 , "Claim processing failed")
         # Make sure that the dedrem was generated
         dedrem = ClaimDedRem.objects.filter(claim=claim1).first()
         self.assertIsNotNone(dedrem, "No demRem for Claim")
-        self.assertEquals(dedrem.rem_g, 500), "Wrong DemRem amount"  # 100*2 + 100*3
+        self.assertEqual(dedrem.rem_g, 500), "Wrong DemRem amount"  # 100*2 + 100*3
         # renumerated should be Null
         self.assertEqual(claim1.remunerated, None, "Claim remunerated when it should not")
 
@@ -195,7 +195,7 @@ class BatchRunWithCapitationPaymentTest(TestCase):
         item1.refresh_from_db()
         service1.refresh_from_db()
 
-        self.assertEquals(claim1.status, Claim.STATUS_VALUATED, "Claim status should be valuated but it is not")
+        self.assertEqual(claim1.status, Claim.STATUS_VALUATED, "Claim status should be valuated but it is not")
         self.assertNotEqual(item1.price_valuated, item1.price_adjusted)
         self.assertNotEqual(service1.price_valuated, service1.price_adjusted)
         # based on calculation - should be 402.31 per item and service
