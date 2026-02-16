@@ -1,2 +1,3 @@
+# flake8: noqa
 from calcrule_capitation_payment.converters.batch_run_to_bill import BatchRunToBillConverter
 from calcrule_capitation_payment.converters.capitation_payment_to_bill_item import CapitationPaymentToBillItemConverter
