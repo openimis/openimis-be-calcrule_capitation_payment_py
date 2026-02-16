@@ -1,7 +1,6 @@
 import calendar
 import datetime
 import decimal
-import calendar
 
 from django.test import TestCase
 
@@ -11,13 +10,11 @@ from claim.test_helpers import (
     create_test_claim,
     create_test_claimservice,
     create_test_claimitem,
-    delete_claim_with_itemsvc_dedrem_and_history,
 )
 from claim_batch.services import do_process_batch
 from contribution.test_helpers import create_test_payer, create_test_premium
-from contribution_plan.models import PaymentPlan
 from contribution_plan.tests.helpers import create_test_payment_plan
-from core.services import create_or_update_interactive_user, create_or_update_core_user
+from core.test_helpers import create_test_interactive_user, create_admin_role
 from insuree.test_helpers import create_test_insuree
 from medical.test_helpers import create_test_service, create_test_item
 from medical_pricelist.test_helpers import (
@@ -49,18 +46,15 @@ _TEST_DATA_USER = {
     "other_names": _TEST_USER_NAME,
     "user_types": "INTERACTIVE",
     "language": "en",
-    "roles": [1, 5, 9],
+    "roles": [create_admin_role().id],
 }
 
 
 class BatchRunWithCapitationPaymentTest(TestCase):
+
     def setUp(self) -> None:
         super(BatchRunWithCapitationPaymentTest, self).setUp()
-        i_user, i_user_created = create_or_update_interactive_user(
-            user_id=None, data=_TEST_DATA_USER, audit_user_id=999, connected=False)
-        user, user_created = create_or_update_core_user(
-            user_uuid=None, username=_TEST_DATA_USER["username"], i_user=i_user)
-        self.user = user
+        self.user = create_test_interactive_user(username=_TEST_DATA_USER["username"])
 
     def test_simple_batch(self):
         """
@@ -68,12 +62,12 @@ class BatchRunWithCapitationPaymentTest(TestCase):
         then submits a review rejecting part of it, then process the claim.
         It should not be processed (which was ok) but the dedrem should be deleted.
         """
-        test_village  =create_test_village()
-        test_ward =test_village.parent
-        test_region =test_village.parent.parent.parent
+        test_village = create_test_village()
+        test_village.parent
+        test_region = test_village.parent.parent.parent
         test_district = test_village.parent.parent
         # Given
-        insuree = create_test_insuree(custom_props={'current_village':test_village})
+        insuree = create_test_insuree(custom_props={'current_village': test_village})
         self.assertIsNotNone(insuree)
         service = create_test_service("A", custom_props={"name": "test_simple_batch"})
         item = create_test_item("A", custom_props={"name": "test_simple_batch"})
@@ -86,7 +80,7 @@ class BatchRunWithCapitationPaymentTest(TestCase):
                 "location_id": test_region.id
             },
         )
-        payment_plan = create_test_payment_plan(
+        create_test_payment_plan(
             product=product,
             calculation="0a1b6d54-5681-4fa6-ac47-2a99c235eaa8",
             custom_props={
@@ -128,30 +122,35 @@ class BatchRunWithCapitationPaymentTest(TestCase):
             }
         )
 
-        product_service = create_test_product_service(
+        create_test_product_service(
             product,
             service,
             custom_props={"price_origin": ProductItemOrService.ORIGIN_RELATIVE},
         )
-        product_item = create_test_product_item(
+        create_test_product_item(
             product,
             item,
             custom_props={"price_origin": ProductItemOrService.ORIGIN_RELATIVE},
         )
-        policy = create_test_policy(product, insuree, link=True, custom_props={
+        policy = create_test_policy(
+            product,
+            insuree,
+            link=True,
+            custom_props={
                 'effective_date': date.today() - timedelta(days=200),
                 'expiry_date': date.today() + timedelta(days=165),
                 'start_date': date.today() - timedelta(days=200),
                 'value': 1000
-                 })
+            }
+        )
         payer = create_test_payer()
-        premium = create_test_premium(
+        create_test_premium(
             policy_id=policy.id, custom_props={
                 "payer_id": payer.id,
                 'amount': 1000,
                 'pay_date': date.today() - timedelta(days=200),
                 'created_date': datetime.datetime.now() - timedelta(days=200)
-        })
+            })
         test_item_price_list = create_test_item_pricelist(test_region.id)
         test_service_price_list = create_test_service_pricelist(test_region.id)
         # create hf and attach item/services pricelist
@@ -162,8 +161,8 @@ class BatchRunWithCapitationPaymentTest(TestCase):
                           "items_pricelist_id": test_item_price_list.id}
         )
         create_test_health_catchment(test_health_facility, test_village)
-        pricelist_detail1 = add_service_to_hf_pricelist(service, test_health_facility.id)
-        pricelist_detail2 = add_item_to_hf_pricelist(item, test_health_facility.id)
+        add_service_to_hf_pricelist(service, test_health_facility)
+        add_item_to_hf_pricelist(item, test_health_facility)
 
         claim1 = create_test_claim(
             {"claimed": 500.0, "insuree_id": insuree.id, 'health_facility_id': test_health_facility.id})
@@ -186,7 +185,7 @@ class BatchRunWithCapitationPaymentTest(TestCase):
 
         # When
         end_date = datetime.datetime(claim1.date_processed.year, claim1.date_processed.month, days_in_month)
-        batch_run = do_process_batch(
+        do_process_batch(
             self.user.id_for_audit,
             test_region.id,
             end_date
@@ -200,14 +199,12 @@ class BatchRunWithCapitationPaymentTest(TestCase):
         self.assertNotEqual(item1.price_valuated, item1.price_adjusted)
         self.assertNotEqual(service1.price_valuated, service1.price_adjusted)
         # based on calculation - should be 402.31 per item and service
-        # Contribution 1000 -> 
+        # Contribution 1000 ->
         # share contribution 100%
-        # total remunerated 500  
+        # total remunerated 500
         # index = (1000 / 365  * day_in mount) / 500
         # value = index * etlem value
         expected_value = round(decimal.Decimal((1000 / 365 * days_in_month / 500 * 100)), 2)
         self.assertEqual(item1.price_valuated, expected_value)
         self.assertEqual(service1.price_valuated, expected_value)
         self.assertEqual(claim1.valuated, service1.price_valuated + item1.price_valuated)
-
-
