@@ -11,7 +11,7 @@ from claim.test_helpers import (
     create_test_claimservice,
     create_test_claimitem,
 )
-from claim_batch.services import do_process_batch
+from claim_batch.services import process_batch
 from contribution.test_helpers import create_test_payer, create_test_premium
 from contribution_plan.tests.helpers import create_test_payment_plan
 from core.test_helpers import create_test_interactive_user, create_admin_role
@@ -184,11 +184,11 @@ class BatchRunWithCapitationPaymentTest(TestCase):
         self.assertEqual(claim1.remunerated, None, "Claim remunerated when it should not")
 
         # When
-        end_date = datetime.datetime(claim1.date_processed.year, claim1.date_processed.month, days_in_month)
-        do_process_batch(
+        process_batch(
             self.user.id_for_audit,
-            test_region.id,
-            end_date
+            product,
+            claim1.date_processed.month,
+            claim1.date_processed.year
         )
 
         claim1.refresh_from_db()

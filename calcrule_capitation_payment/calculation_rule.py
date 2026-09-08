@@ -23,15 +23,18 @@ from calcrule_capitation_payment.utils import (
 )
 from claim_batch.models import CapitationPayment
 from claim_batch.services import (
+    combine_product_filters,
     get_hospital_claim_filter,
+    get_products_from_work_data, 
     update_claim_valuated,
 )
+from django.db.models import Q
 from core import datetime
 from core.models import User
 from contribution_plan.models import PaymentPlan
 from contribution_plan.utils import obtain_calcrule_params
 from invoice.services import BillService
-from location.models import HealthFacility
+from location.models import HealthFacility, Location
 from product.models import Product
 
 
@@ -138,18 +141,28 @@ class CapitationPaymentCalculationRule(AbsStrategy):
     @classmethod
     def _process_batch_valuation(cls, instance, **kwargs):
         work_data = kwargs.get("work_data", None)
-        product = work_data["product"]
+        products = get_products_from_work_data(work_data)
+        if not products:
+            return
         pp_params = obtain_calcrule_params(
             instance, INTEGER_PARAMETERS, NONE_INTEGER_PARAMETERS
         )
         work_data["pp_params"] = pp_params
         # manage the in/out patient params
+        # Use combine_product_filters with a lifter lambda. Each product provides its
+        # own ceiling_interpretation-derived Q via the lifter; they are OR-ed so that
+        # we correctly select claims, items and services that match *any* of the
+        # products under that product's specific rule.
         work_data["claims"] = (
             work_data["claims"]
             .filter(get_hospital_level_filter(pp_params))
             .filter(
-                get_hospital_claim_filter(
-                    product.ceiling_interpretation, pp_params["claim_type"]
+                combine_product_filters(
+                    products,
+                    lambda p: (Q(items__product=p) | Q(services__product=p))
+                    & get_hospital_claim_filter(
+                        p.ceiling_interpretation, pp_params["claim_type"]
+                    ),
                 )
             )
         )
@@ -157,8 +170,12 @@ class CapitationPaymentCalculationRule(AbsStrategy):
             work_data["items"]
             .filter(get_hospital_level_filter(pp_params, prefix="claim__"))
             .filter(
-                get_hospital_claim_filter(
-                    product.ceiling_interpretation, pp_params["claim_type"], "claim__"
+                combine_product_filters(
+                    products,
+                    lambda p: Q(product=p)
+                    & get_hospital_claim_filter(
+                        p.ceiling_interpretation, pp_params["claim_type"], "claim__"
+                    ),
                 )
             )
         )
@@ -166,8 +183,12 @@ class CapitationPaymentCalculationRule(AbsStrategy):
             work_data["services"]
             .filter(get_hospital_level_filter(pp_params, prefix="claim__"))
             .filter(
-                get_hospital_claim_filter(
-                    product.ceiling_interpretation, pp_params["claim_type"], "claim__"
+                combine_product_filters(
+                    products,
+                    lambda p: Q(product=p)
+                    & get_hospital_claim_filter(
+                        p.ceiling_interpretation, pp_params["claim_type"], "claim__"
+                    ),
                 )
             )
         )
@@ -182,6 +203,12 @@ class CapitationPaymentCalculationRule(AbsStrategy):
         audit_user_id, product_id, start_date, end_date, batch_run, work_data = (
             cls._get_batch_run_parameters(**kwargs)
         )
+
+        if work_data:
+            # Adapt to products list (from work_data, scoped per plan by trigger)
+            products = get_products_from_work_data(work_data)
+            # instance.benefit_plan is the authoritative product for this PP
+            # (already used below)
 
         # retrieving the allocated contribution from work_data
         if "allocated_contributions" in work_data:
@@ -239,8 +266,9 @@ class CapitationPaymentCalculationRule(AbsStrategy):
         if user is None:
             raise ValidationError(_("Such User does not exist"))
 
+        loc = batch_run.scope if isinstance(batch_run.scope, Location) else getattr(batch_run, 'location', None)
         region_id, district_id, region_code, district_code = (
-            get_capitation_region_and_district(batch_run.location_id)
+            get_capitation_region_and_district(loc or getattr(batch_run, 'location_id', None))
         )
 
         capitation_payment = CapitationPayment.objects.filter(
